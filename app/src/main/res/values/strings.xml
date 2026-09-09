@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Block</string>
+    <string name="device_admin_description">
+        Protects Block from being uninstalled until the removal process is completed.
+    </string>
+    <string name="device_admin_disable_warning">
+        Turning this off outside the app will not remove Block\'s protection permanently — open Block and use \"Request to Remove\" to go through the official removal process instead.
+    </string>
+    <string name="tamper_guard_description">
+        Keeps Block\'s protection from being turned off from Settings, or the app from being uninstalled, outside of Block\'s own official removal process.
+    </string>
+</resources>
