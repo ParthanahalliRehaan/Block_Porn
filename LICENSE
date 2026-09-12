@@ -1,0 +1,82 @@
+MIT License
+
+Copyright (c) 2026 Rehaan Parthanahalli
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------------------------
+ADDITIONAL TERMS (apply alongside the MIT License above)
+------------------------------------------------------------------------------
+
+This Software includes an Android Device Administrator receiver and an
+Accessibility Service that are specifically designed to resist casual
+removal, deactivation, or uninstallation of the Software (a "self-control"
+or "commitment device" mechanism). By installing, distributing, or using
+this Software, you additionally agree to the following:
+
+1. SELF-INSTALLATION AND CONSENT ONLY
+   This Software is intended to be installed by a person on a device that
+   person owns and controls, as a voluntary personal commitment tool. It is
+   NOT intended, licensed, or authorized to be installed on any device
+   belonging to, or primarily used by, another person without that person's
+   full knowledge, understanding, and freely given consent to its
+   anti-removal behavior. Installing this Software on another adult's
+   device without their informed consent, or on a minor's device as a
+   covert monitoring tool, may violate computer-fraud, wiretapping,
+   stalkerware, or consumer-protection laws in your jurisdiction. The
+   authors and contributors expressly disclaim any license, permission, or
+   endorsement to use this Software in that manner.
+
+2. NO GUARANTEE OF EFFECTIVENESS
+   The Software filters and restricts access using DNS-level and
+   accessibility-level controls on the device. These mechanisms have known
+   limitations (e.g., alternate DNS/VPN configuration, factory reset,
+   sideloaded tools, or OS updates that change API behavior) and can be
+   bypassed by a sufficiently motivated user, including the installing
+   user. The Software makes no representation or warranty that it will
+   successfully block any specific content, site, or behavior at any time.
+
+3. NOT A MEDICAL OR THERAPEUTIC DEVICE
+   This Software is a personal productivity/self-control tool. It is not a
+   medical device, is not a substitute for professional treatment,
+   counseling, or therapy, and makes no clinical claim to treat, cure, or
+   prevent any behavioral or mental health condition. Anyone seeking help
+   for compulsive behavior is encouraged to consult a licensed professional.
+
+4. ASSUMPTION OF RISK FOR DEVICE-LEVEL PERMISSIONS
+   Device Administrator and Accessibility Service permissions grant
+   elevated control over the device (e.g., resisting uninstall, observing
+   on-screen UI events to detect attempts to disable the app). Users
+   granting these permissions do so at their own risk and are solely
+   responsible for understanding what the permissions allow before granting
+   them. The removal flow (PIN + timed delay) is the only sanctioned way to
+   disable these permissions through the app itself.
+
+5. LIABILITY
+   To the maximum extent permitted by law, in addition to the MIT
+   warranty/liability disclaimer above, the authors and contributors are
+   not liable for any lockout, data loss, device malfunction, relationship
+   or workplace consequence, or other harm arising from installation,
+   misuse, or inability to remove this Software.
+
+If you plan to distribute this Software publicly (e.g., via an app store),
+you are responsible for ensuring your listing, in-app disclosures, and
+permission justifications comply with that platform's policies
+(particularly around Accessibility API use and anti-uninstall behavior)
+and with the laws of the jurisdictions where it will be available.
