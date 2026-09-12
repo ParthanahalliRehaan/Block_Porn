@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.block.admin.DeviceAdminManager
+import com.example.block.guard.TamperLockout
 import com.example.block.security.PinManager
 import com.example.block.ui.theme.BlockTheme
 import kotlinx.coroutines.delay
@@ -58,7 +59,9 @@ class RemovalActivity : ComponentActivity() {
 
             mutableStateOf(
 
-                if (RemovalController.isRunning()) {
+                if (TamperLockout.isActive(this@RemovalActivity)) {
+                    RemovalPhase.LOCKED
+                } else if (RemovalController.isRunning()) {
                     RemovalPhase.COUNTDOWN
                 } else {
                     RemovalPhase.START
@@ -68,6 +71,15 @@ class RemovalActivity : ComponentActivity() {
         }
 
         when (phase) {
+
+            RemovalPhase.LOCKED -> {
+
+                LockedScreen(
+                    onUnlocked = {
+                        phase = RemovalPhase.START
+                    }
+                )
+            }
 
             RemovalPhase.START -> {
 
@@ -148,9 +160,88 @@ class RemovalActivity : ComponentActivity() {
     }
 
     private enum class RemovalPhase {
+        LOCKED,
         START,
         COUNTDOWN,
         PIN
+    }
+}
+
+@Composable
+private fun LockedScreen(
+    onUnlocked: () -> Unit
+) {
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    var remaining by remember {
+        mutableLongStateOf(TamperLockout.remainingMs(context))
+    }
+
+    LaunchedEffect(Unit) {
+
+        while (true) {
+
+            remaining = TamperLockout.remainingMs(context)
+
+            if (!TamperLockout.isActive(context)) {
+                onUnlocked()
+                break
+            }
+
+            delay(250L)
+        }
+    }
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+
+        horizontalAlignment =
+            Alignment.CenterHorizontally,
+
+        verticalArrangement =
+            Arrangement.Center
+    ) {
+
+        Text(
+            text = "Locked",
+            style =
+                MaterialTheme
+                    .typography
+                    .headlineMedium
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(20.dp)
+        )
+
+        Text(
+            text =
+                "That attempt just cost you an hour. Removal is locked while this counts down.",
+            style =
+                MaterialTheme
+                    .typography
+                    .bodyLarge
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(24.dp)
+        )
+
+        Text(
+            text =
+                formatTime(remaining),
+
+            style =
+                MaterialTheme
+                    .typography
+                    .displayLarge
+        )
     }
 }
 

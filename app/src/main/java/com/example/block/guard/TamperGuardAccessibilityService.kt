@@ -1,5 +1,7 @@
 package com.example.block.guard
 
+import android.os.Handler
+import android.os.Looper
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
@@ -34,6 +36,13 @@ class TamperGuardAccessibilityService : AccessibilityService() {
     // plus an "App info" long-press action — from systemui, not Settings) or
     // the launcher's own app-info menu. Add more OEM package names here if a
     // specific device's Settings app uses a different one.
+    private val handler = Handler(Looper.getMainLooper())
+
+    // Labels seen across different launchers' Recents "clear everything"
+    // control (Pixel/AOSP says "Clear all", Samsung says "Close all",
+    // some OEMs say "Clear recents"). Matched against both visible text
+    // and contentDescription since some launchers use an icon-only button.
+    private val clearAllLabels = listOf("clear all", "close all", "clear recents")
     private val watchedPackages = setOf(
         "com.android.settings",
         "com.android.packageinstaller",
@@ -122,7 +131,16 @@ class TamperGuardAccessibilityService : AccessibilityService() {
         val mentionsSensitiveAction =
             sensitiveKeywords.any { screenText.contains(it) }
 
-        if (mentionsUs && mentionsSensitiveAction) {
+        // Normally we only bounce when a sensitive word is actually visible
+        // (avoids false positives on, say, the full Accessibility settings
+        // list, which mentions every app including ours). But once a
+        // lockout is active from a prior attempt, we tighten this up: any
+        // watched-package screen that even mentions us gets closed, so
+        // there's no window to scroll to "Uninstall" before we react.
+        val shouldIntercept =
+            mentionsUs && (mentionsSensitiveAction || TamperLockout.isActive(applicationContext))
+
+        if (shouldIntercept) {
 
             if (event.windowId == lastHandledWindowId) {
                 // Already redirected away from this exact window — ignore
@@ -171,13 +189,71 @@ class TamperGuardAccessibilityService : AccessibilityService() {
     }
 
     private fun interceptTamperAttempt() {
+        TamperLockout.trigger(applicationContext)
+
         performGlobalAction(GLOBAL_ACTION_HOME)
+
+        // Sending Home only backgrounds the App Info screen — Settings
+        // keeps its task alive in Recents, where it can be resumed
+        // directly without "opening" it again, skipping this service's
+        // detection entirely. Best-effort mitigation: open Recents
+        // ourselves and tap whatever "clear all" control the launcher
+        // offers, wiping every recent task (not just Settings — there's no
+        // API to target just one) so there's nothing left to resume.
+        handler.postDelayed({
+            clearRecentsIfPossible()
+        }, 300L)
 
         val intent = Intent(this, RemovalActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
         startActivity(intent)
+    }
+
+    private fun clearRecentsIfPossible() {
+        performGlobalAction(GLOBAL_ACTION_RECENTS)
+
+        handler.postDelayed({
+            val root = rootInActiveWindow
+
+            if (root != null) {
+                val clearButton = findClearAllButton(root)
+
+                if (clearButton != null) {
+                    clearButton.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                    Log.i(TAG, "Cleared Recents after tamper attempt")
+                } else {
+                    Log.d(TAG, "No 'clear all' control found in Recents on this launcher")
+                }
+            }
+
+            // Whether or not clearing worked, get back off Recents.
+            performGlobalAction(GLOBAL_ACTION_HOME)
+        }, 350L)
+    }
+
+    private fun findClearAllButton(
+        node: AccessibilityNodeInfo,
+        depth: Int = 0
+    ): AccessibilityNodeInfo? {
+
+        if (depth > 40) return null
+
+        val label = (node.text?.toString() ?: node.contentDescription?.toString())
+            ?.lowercase()
+
+        if (label != null && clearAllLabels.any { label.contains(it) }) {
+            return node
+        }
+
+        for (i in 0 until node.childCount) {
+            node.getChild(i)?.let { child ->
+                findClearAllButton(child, depth + 1)?.let { return it }
+            }
+        }
+
+        return null
     }
 
     override fun onInterrupt() {}

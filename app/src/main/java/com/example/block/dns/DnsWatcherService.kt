@@ -11,14 +11,17 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.block.guard.AccessibilityGuardOverlayManager
+import com.example.block.guard.TamperGuardStatus
 import com.example.block.health.BatteryOverlayManager
 import com.example.block.health.HealthNotifier
 import com.example.block.health.SystemHealthChecker
 
 /**
- * Foreground service that polls the Private DNS setting every 10 seconds.
- * If it's found to be off or changed, attempts to directly launch the
- * Private DNS settings screen.
+ * Foreground service that polls Private DNS, the Tamper Guard accessibility
+ * service, and battery optimization every few seconds, showing a full-screen
+ * overlay for whichever protection is off. If it's found to be off or
+ * changed, attempts to directly launch the relevant settings screen.
  *
  * IMPORTANT LIMITATION (read this before assuming it's broken):
  * Android 10+ restricts apps from launching activities from the background
@@ -28,11 +31,20 @@ import com.example.block.health.SystemHealthChecker
  * silently blocked. If that happens, the sanctioned alternative is a
  * full-screen intent notification (the same mechanism alarm/call apps
  * use) — ask to switch to that approach if this doesn't work reliably.
+ *
+ * ACCESSIBILITY-SPECIFIC NOTE: on Android 13+, a sideloaded app's
+ * accessibility service can get silently kicked back to "off" by the OS's
+ * Restricted Settings feature, not by anything in this app's own code —
+ * that's what "it disables itself without asking" usually is. The fix on
+ * the phone itself is: Settings → Apps → Block → the "⋮" overflow menu →
+ * "Allow restricted settings", once, before enabling accessibility. The
+ * overlay below can only prompt the user back to the toggle; it can't
+ * bypass that OS restriction.
  */
 class DnsWatcherService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
-    private val pollIntervalMs = 10_000L // 10 seconds
+    private val pollIntervalMs = 2_000L // 3 seconds — fast enough that turning any protection off is noticed almost immediately
 
     private val pollRunnable = object : Runnable {
         override fun run() {
@@ -76,7 +88,41 @@ class DnsWatcherService : Service() {
         }
 
         checkOverlayPermission()
-        checkBatteryOptimization(dnsOk)
+
+        val guardOk = checkAccessibilityGuard(dnsOk)
+        checkBatteryOptimization(dnsOk, guardOk)
+    }
+
+    /**
+     * Checks whether the Tamper Guard accessibility service is on. Returns
+     * true if it's on (or we're deliberately not showing anything for it
+     * right now), false if the overlay is up because it's off — used by
+     * checkBatteryOptimization so we never stack two full-screen overlays.
+     */
+    private fun checkAccessibilityGuard(dnsOk: Boolean): Boolean {
+        val guardOk = TamperGuardStatus.isEnabled(this)
+
+        if (guardOk) {
+            AccessibilityGuardOverlayManager.hideOverlay(this)
+            return true
+        }
+
+        // DNS being broken means nothing is being filtered at all — that
+        // takes priority over the accessibility overlay.
+        if (!dnsOk) {
+            AccessibilityGuardOverlayManager.hideOverlay(this)
+            return false
+        }
+
+        // Just sent the user to the settings toggle — give them a short
+        // window to actually flip it before covering the screen again.
+        if (AccessibilityGuardOverlayManager.isInGracePeriod()) {
+            return false
+        }
+
+        Log.d("DnsWatcherService", "Accessibility guard off — showing overlay")
+        AccessibilityGuardOverlayManager.showOverlay(this)
+        return false
     }
 
     /**
@@ -92,7 +138,7 @@ class DnsWatcherService : Service() {
         }
     }
 
-    private fun checkBatteryOptimization(dnsOk: Boolean) {
+    private fun checkBatteryOptimization(dnsOk: Boolean, guardOk: Boolean) {
         val batteryOk = SystemHealthChecker.isBatteryUnrestricted(this)
 
         if (batteryOk) {
@@ -101,8 +147,10 @@ class DnsWatcherService : Service() {
         }
 
         // Don't stack two full-screen overlays — the DNS warning takes
-        // priority since broken DNS means nothing is being filtered at all.
-        if (dnsOk) {
+        // priority since broken DNS means nothing is being filtered at all,
+        // and the accessibility-guard warning takes priority over this one
+        // too (it's the more urgent problem).
+        if (dnsOk && guardOk) {
             BatteryOverlayManager.showOverlay(this)
         } else {
             BatteryOverlayManager.hideOverlay(this)
